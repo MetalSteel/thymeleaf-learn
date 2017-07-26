@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>miniui</title>
+    <link th:href="@{/miniui/themes/default/miniui.css}" rel="stylesheet"/>
+    <link th:href="@{/miniui/themes/icons.css}" rel="stylesheet"/>
+    <script th:src="@{/webjars/jquery/3.2.1/jquery.js}"></script>
+    <script th:src="@{/miniui/miniui.js}"></script>
+</head>
+<body>
+    <h1>CellEdit 单元格编辑</h1>
+    <div style="width:800px;">
+        <div class="mini-toolbar" style="border-bottom:0;padding:0px;">
+            <table style="width:100%;">
+                <tr>
+                    <td style="width:100%;">
+                        <a class="mini-button" iconCls="icon-add" onclick="addRow()" plain="true" tooltip="增加...">增加</a>
+                        <a class="mini-button" iconCls="icon-remove" onclick="removeRow()" plain="true">删除</a>
+                        <span class="separator"></span>
+                        <a class="mini-button" iconCls="icon-save" onclick="saveData()" plain="true">保存</a>
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <input id="key" class="mini-textbox" emptyText="请输入姓名" style="width:150px;" onenter="onKeyEnter"/>
+                        <a class="mini-button" onclick="search()">查询</a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div id="datagrid1" class="mini-datagrid" style="width:800px;height:280px;"
+         th:url="@{/data/data.json}" idField="id"
+         allowResize="true" pageSize="20"
+         allowCellEdit="true" allowCellSelect="true" multiSelect="true"
+         editNextOnEnterKey="true"  editNextRowCell="true"
+    >
+        <div property="columns">
+            <div type="indexcolumn"></div>
+            <div type="checkcolumn"></div>
+            <div name="LoginName"  field="loginname" headerAlign="center" allowSort="true" width="150" >员工帐号
+                <input property="editor" class="mini-textbox" style="width:100%;" minWidth="200" />
+            </div>
+            <div field="age" width="100" allowSort="true" >年龄
+                <input property="editor" class="mini-spinner"  minValue="0" maxValue="200" value="25" style="width:100%;"/>
+            </div>
+            <div name="birthday" field="birthday" width="100" allowSort="true" dateFormat="yyyy-MM-dd">出生日期
+                <input property="editor" class="mini-datepicker" style="width:100%;"/>
+            </div>
+            <div field="remarks" width="120" headerAlign="center" allowSort="true">备注
+                <input property="editor" class="mini-textarea" style="width:200px;" minWidth="200" minHeight="50"/>
+            </div>
+            <!--ComboBox：本地数据-->
+            <div type="comboboxcolumn" autoShowPopup="true" name="gender" field="gender" width="100" allowSort="true"  align="center" headerAlign="center">性别
+                <input property="editor" class="mini-combobox" style="width:100%;" data="Genders" />
+            </div>
+            <!--ComboBox：远程数据-->
+            <div type="comboboxcolumn" field="country" width="100" headerAlign="center" >国家
+                <input property="editor" class="mini-combobox" style="width:100%;" th:url="@{/data/data.json}" />
+            </div>
+            <div type="checkboxcolumn" field="married" trueValue="1" falseValue="0" width="60" headerAlign="center">婚否</div>
+        </div>
+    </div>
+    <fieldset style="width:700px;border:solid 1px #aaa;margin-top:8px;position:relative;">
+        <legend>员工详细信息</legend>
+        <div id="editForm1" style="padding:5px;">
+            <input class="mini-hidden" name="id"/>
+            <table style="width:100%;">
+                <tr>
+                    <td style="width:80px;">员工帐号：</td>
+                    <td style="width:150px;"><input id="loginname" name="loginname" class="mini-textbox" /></td>
+                    <td style="width:80px;">姓名：</td>
+                    <td style="width:150px;"><input id="name" name="name" class="mini-textbox" /></td>
+                    <td style="width:80px;">薪资：</td>
+                    <td style="width:150px;"><input name="salary" class="mini-textbox" /></td>
+                </tr>
+                <tr>
+                    <td>性别：</td>
+                    <td><input id="gender" name="gender" class="mini-combobox" data="Genders"/></td>
+                    <td>年龄：</td>
+                    <td><input id="age" name="age" class="mini-spinner" minValue="0" maxValue="200" value="25"  /></td>
+                    <td>出生日期：</td>
+                    <td><input id="birthday" name="birthday" class="mini-datepicker" /></td>
+                </tr>
+            </table>
+        </div>
+    </fieldset>
+    <script type="text/javascript">
+
+        var Genders = [{ id: 1, text: '男' }, { id: 2, text: '女'}];
+
+        mini.parse();
+
+        var grid = mini.get("datagrid1");
+        grid.load();
+
+        //绑定表单
+        var db = new mini.DataBinding();
+
+        db.bindForm("editForm1", grid);
+
+        function search() {
+            var key = mini.get("key").getValue();
+
+            grid.load({ key: key });
+        }
+
+        function onKeyEnter(e) {
+            search();
+        }
+
+        function addRow() {
+            var newRow = { name: "New Row" };
+            grid.addRow(newRow, 0);
+
+            grid.beginEditCell(newRow, "LoginName");
+        }
+        function removeRow() {
+            var rows = grid.getSelecteds();
+            if (rows.length > 0) {
+                grid.removeRows(rows, true);
+            }
+        }
+        function saveData() {
+
+            var data = grid.getChanges();
+            var json = mini.encode(data);
+
+            grid.loading("保存中，请稍后......");
+            $.ajax({
+                url: "/thymeleaf-learn/data/data.json",
+                data: { data: json },
+                type: "post",
+                success: function (text) {
+                    grid.reload();
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    alert(jqXHR.responseText);
+                }
+            });
+        }
+
+
+        grid.on("celleditenter", function (e) {
+            var index = grid.indexOf(e.record);
+            if (index == grid.getData().length - 1) {
+                var row = {};
+                grid.addRow(row);
+            }
+        });
+
+        grid.on("beforeload", function (e) {
+            if (grid.getChanges().length > 0) {
+                if (confirm("有增删改的数据未保存，是否取消本次操作？")) {
+                    e.cancel = true;
+                }
+            }
+        });
+
+    </script>
+
+    <div class="description">
+        <h3>Description</h3>
+        <ul>
+            <li>方向键导航单元格</li>
+            <li>按回车键进入编辑</li>
+            <li>按ESC键取消编辑</li>
+            <li>按Tab键进入下一个单元格编辑</li>
+            <li>editNextOnEnterKey="true"后，按回车键进入下一个单元格编辑</li>
+        </ul>
+    </div>
+
+</body>
+</html>
